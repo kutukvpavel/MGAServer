@@ -15,7 +15,7 @@ namespace MGAServer
          * Sensor Index (1 byte)
          * 8 bytes of data, sign inverted (2's complement 24-bit ints?)
          * 
-         * first byte == ???
+         * first byte == ??? (every 5 seconds goes 0x00 -> 0x81 -> 0x01 -> 0x00, i.e. 0 -> 1 -> -1 -> 0 ?)
          * 3 bytes = heater resistance with 3 decimal places
          * 3 bytes = raw conductance (proportional to 1/16, probably means one nibble actually is shifted somewhere)
          * 
