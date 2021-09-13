@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MGAServer": {
+      "commandName": "Project",
+      "commandLineArgs": "\"E:\\mga_cond.txt\""
+    }
+  }
+}
