@@ -14,5 +14,11 @@ namespace MGAServer
         {
             return this.Where(x => x.SensorIndex == index).ToArray();
         }
+
+        public new void Add(MGAPacket item)
+        {
+
+            base.Add(item);
+        }
     }
 }

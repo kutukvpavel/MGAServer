@@ -35,7 +35,21 @@ namespace MGAServer
         public static int TemperatureLength { get; set; } = 3;
         public static int ConductanceLength { get; set; } = 4;
 
-        public static MGAResult ParseDump(string path)
+        public static MGAResult ParseRawDump(string path)
+        {
+            using Stream s = File.OpenRead(path);
+            MGAResult res = new MGAResult();
+            var p = new MGAParser();
+            int b;
+            while ((b = s.ReadByte()) != -1)
+            {
+                var packet = p.ParseByte((byte)b);
+                if (packet != null) res.Add(packet);
+            }
+            return res;
+        }
+
+        public static MGAResult ParseLADump(string path)
         {
             var data = File.ReadLines(path);
             MGAResult res = new MGAResult();
@@ -73,104 +87,104 @@ namespace MGAServer
 
         public MGAPacket ParseByte(byte val)
         {
-            if (s != State.SearchingForPreamble && s != State.ConfirmingPreamble)
+            lock (this)
             {
-                raw.Add(val);
-            }
-            else
-            {
-                raw.Clear();
-            }
-            switch (s)
-            {
-                case State.SearchingForPreamble:
-                    if (val == PacketPreamble[0])
-                    {
-                        s = State.ConfirmingPreamble;
-                        indexer = 1;
-                    }
-                    break;
-                case State.ConfirmingPreamble:
-                    if (val != PacketPreamble[indexer++])
-                    {
-                        if (val != PacketPreamble[0]) s = State.SearchingForPreamble;
-                        indexer = 1;
-                    }
-                    else
-                    {
-                        if (indexer == PacketPreamble.Length) s = State.ReadingSensorIndex;
-                    }
-                    break;
-                case State.ReadingSensorIndex:
-                    si = val;
-                    s = SkipToTemperature > 0 ? State.SkippingToTemperature : State.ReadingHeater;
-                    indexer = 0;
-                    break;
-                case State.SkippingToTemperature:
-                    if (++indexer == SkipToTemperature)
-                    {
-                        indexer = 0;
-                        s = State.ReadingHeater;
-                    }
-                    break;
-                case State.ReadingHeater:
-                    if (++indexer == TemperatureLength)
-                    {
-                        var b = raw.TakeLast(TemperatureLength).ToList();
-                        b[0] ^= 0x80;
-                        for (int i = 0; i < (sizeof(int) - TemperatureLength); i++)
+                if (s != State.SearchingForPreamble && s != State.ConfirmingPreamble)
+                {
+                    raw.Add(val);
+                }
+                else
+                {
+                    raw.Clear();
+                }
+                switch (s)
+                {
+                    case State.SearchingForPreamble:
+                        if (val == PacketPreamble[0])
                         {
-                            b = b.Prepend<byte>(0).ToList();
+                            s = State.ConfirmingPreamble;
+                            indexer = 1;
                         }
-                        if (ReverseEndianess) b.Reverse();
-                        temp = BitConverter.ToInt32(b.ToArray(), 0) / 1000.0f;
-                        s = SkipToConductance > 0 ? State.SkippingToConductance : State.ReadingConductance;
-                        indexer = 0;
-                    }
-                    break;
-                case State.SkippingToConductance:
-                    if (++indexer == SkipToConductance)
-                    {
-                        indexer = 0;
-                        s = State.ReadingConductance;
-                    }
-                    break;
-                case State.ReadingConductance:
-                    if (++indexer == ConductanceLength)
-                    {
-                        var b = raw.TakeLast(ConductanceLength).ToList();
-                        b[0] ^= 0x80;
-                        for (int i = 0; i < (sizeof(int) - ConductanceLength); i++)
+                        break;
+                    case State.ConfirmingPreamble:
+                        if (val != PacketPreamble[indexer++])
                         {
-                            b = b.Prepend<byte>(0).ToList();
+                            if (val != PacketPreamble[0]) s = State.SearchingForPreamble;
+                            indexer = 1;
                         }
-                        if (ReverseEndianess) b.Reverse();
-                        cond = BitConverter.ToInt32(b.ToArray(), 0) / 1.6E9f;
-                        s = State.SearchingForPreamble;
+                        else
+                        {
+                            if (indexer == PacketPreamble.Length) s = State.ReadingSensorIndex;
+                        }
+                        break;
+                    case State.ReadingSensorIndex:
+                        si = val;
+                        s = SkipToTemperature > 0 ? State.SkippingToTemperature : State.ReadingHeater;
                         indexer = 0;
-                        return new MGAPacket(si, temp, cond, raw.ToArray());
-                    }
-                    break;
-                default:
-                    throw new InvalidOperationException();
+                        break;
+                    case State.SkippingToTemperature:
+                        if (++indexer == SkipToTemperature)
+                        {
+                            indexer = 0;
+                            s = State.ReadingHeater;
+                        }
+                        break;
+                    case State.ReadingHeater:
+                        if (++indexer == TemperatureLength)
+                        {
+                            var b = raw.TakeLast(TemperatureLength).ToList();
+                            b[0] ^= 0x80;
+                            for (int i = 0; i < (sizeof(int) - TemperatureLength); i++)
+                            {
+                                b = b.Prepend<byte>(0).ToList();
+                            }
+                            if (ReverseEndianess) b.Reverse();
+                            temp = BitConverter.ToInt32(b.ToArray(), 0) / 1000.0f;
+                            s = SkipToConductance > 0 ? State.SkippingToConductance : State.ReadingConductance;
+                            indexer = 0;
+                        }
+                        break;
+                    case State.SkippingToConductance:
+                        if (++indexer == SkipToConductance)
+                        {
+                            indexer = 0;
+                            s = State.ReadingConductance;
+                        }
+                        break;
+                    case State.ReadingConductance:
+                        if (++indexer == ConductanceLength)
+                        {
+                            var b = raw.TakeLast(ConductanceLength).ToList();
+                            b[0] ^= 0x80;
+                            for (int i = 0; i < (sizeof(int) - ConductanceLength); i++)
+                            {
+                                b = b.Prepend<byte>(0).ToList();
+                            }
+                            if (ReverseEndianess) b.Reverse();
+                            cond = BitConverter.ToInt32(b.ToArray(), 0) / 1.6E9f;
+                            s = State.SearchingForPreamble;
+                            indexer = 0;
+                            return new MGAPacket(si, temp, cond, raw.ToArray());
+                        }
+                        break;
+                    default:
+                        throw new InvalidOperationException();
+                }
+                return null;
             }
-            return null;
         }
-    }
 
-    public class MGAPacket
-    {
-        public MGAPacket(int index, float resistance, float conductance, byte[] raw)
+        public void ResetState()
         {
-            SensorIndex = index;
-            HeaterResistance = resistance;
-            Conductance = conductance;
-            RawValue = raw;
+            lock (this)
+            {
+                s = State.SearchingForPreamble;
+                indexer = 1;
+                si = -1;
+                temp = 0;
+                cond = 0;
+                raw = new List<byte>(9);
+            }
         }
-
-        public int SensorIndex { get; }
-        public float HeaterResistance { get; }
-        public float Conductance { get; }
-        public byte[] RawValue { get; }
     }
 }
