@@ -94,12 +94,23 @@ namespace MGAServer
 
         public void Dispose()
         {
-            if (Port.IsOpen) Disconnect();
-            _DumpTokenSource.Dispose();
-            Port.Dispose();
-            _PacketQueue.Dispose();
+            if (_Disposed) return;
+            try
+            {
+                if (Port.IsOpen) Disconnect();
+                _DumpTokenSource.Dispose();
+                Port.Dispose();
+                _PacketQueue.Dispose();
+            }
+            catch (ObjectDisposedException)
+            { }
+            finally
+            {
+                _Disposed = true;
+            }
         }
 
+        private bool _Disposed = false;
         private BlockingCollection<MGAPacket> _PacketQueue;
         private Thread _PacketDumpThread;
         private CancellationTokenSource _DumpTokenSource;

@@ -86,7 +86,8 @@ namespace MGAServer
 
         static ExitCodes AcquisitionMain(string portName)
         {
-
+            using MGAResult res = new MGAResult(Configuration.Instance.GetSavePath());
+            using MGAServer serv = new MGAServer(portName);
 
             return ExitCodes.OK;
         }
