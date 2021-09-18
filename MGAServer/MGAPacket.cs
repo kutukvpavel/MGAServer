@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace MGAServer
+namespace MGA
 {
     public class MGAPacket
     {

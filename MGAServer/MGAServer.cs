@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using RJCP.IO.Ports;
 
-namespace MGAServer
+namespace MGA
 {
     public class MGAServer : IDisposable
     {
@@ -61,7 +61,7 @@ namespace MGAServer
             catch (Exception ex)
             {
                 Disconnect();
-                ErrorOccurred?.Invoke(this, ex);
+                throw;
             }
         }
 
@@ -124,6 +124,7 @@ namespace MGAServer
                 Port.DiscardOutBuffer();
                 Parser.ResetState();
             }
+            ErrorOccurred?.BeginInvoke(this, new System.IO.IOException(Enum.GetName(typeof(SerialError), e.EventType)), null, null);
         }
 
         private void Port_DataReceived(object sender, SerialDataReceivedEventArgs e)
@@ -132,10 +133,17 @@ namespace MGAServer
             MGAPacket p;
             lock (this)
             {
-                while ((b = Port.ReadByte()) != -1)
+                try
                 {
-                    p = Parser.ParseByte((byte)b);
-                    if (p != null) _PacketQueue.Add(p);
+                    while((b = Port.ReadByte()) != -1)
+                    {
+                        p = Parser.ParseByte((byte)b);
+                        if (p != null) _PacketQueue.Add(p);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ErrorOccurred?.BeginInvoke(this, ex, null, null);
                 }
             }
         }

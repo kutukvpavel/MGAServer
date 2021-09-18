@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace MGAServer
+namespace MGA
 {
     public class MGAResult : List<MGAPacket>, IDisposable
     {
@@ -12,10 +12,13 @@ namespace MGAServer
 
         public MGAResult() : base()
         { }
-        public MGAResult(string filePath) : this()
+        public MGAResult(string filePath, PipeServer pipe = null) : this()
         {
-            _SaveFile = new StreamWriter(new FileStream(filePath, FileMode.Append, FileAccess.Write));
+            InitFiles(filePath);
+            _Pipe = pipe;
         }
+
+        public int[] SelectSensors { get; set; }
 
         public MGAPacket[] GetSensor(int index)
         {
@@ -24,9 +27,15 @@ namespace MGAServer
 
         public new void Add(MGAPacket item)
         {
-            if (_SaveFile?.BaseStream?.CanWrite ?? false)
+            if (!(SelectSensors?.Contains(item.SensorIndex) ?? true)) return;
+            if (_SaveFile[item.SensorIndex]?.BaseStream?.CanWrite ?? false)
             {
-                _SaveFile.WriteLine()
+
+                _SaveFile[item.SensorIndex].WriteLine(SaveLineFormat, DateTime.Now, item.Conductance, item.HeaterResistance);
+            }
+            if (_Pipe != null)
+            {
+                _Pipe.Send(item);
             }
             base.Add(item);
         }
@@ -36,19 +45,34 @@ namespace MGAServer
             if (_Disposed) return;
             try
             {
-                _SaveFile.Close();
-                _SaveFile.Dispose();
+                foreach (var item in _SaveFile)
+                {
+                    try
+                    {
+                        item?.Close();
+                        item?.Dispose();
+                    }
+                    catch (ObjectDisposedException)
+                    { }
+                }
             }
-            catch (ObjectDisposedException)
-            { }
             finally
             {
                 _Disposed = true;
             }
         }
 
+        private void InitFiles(string filePath)
+        {
+            for (int i = 0; i < _SaveFile.Length; i++)
+            {
+                _SaveFile[i] = new StreamWriter(new FileStream(
+                    string.Format(filePath, i), FileMode.Append, FileAccess.Write, FileShare.Read));
+            }
+        }
 
         private bool _Disposed = false;
-        private StreamWriter _SaveFile;
+        private readonly StreamWriter[] _SaveFile = new StreamWriter[4];
+        private readonly PipeServer _Pipe;
     }
 }

@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using CommandLine;
 
-namespace MGAServer
+namespace MGA
 {
     public enum Mode
     {
@@ -18,6 +19,7 @@ namespace MGAServer
         UnknownMode,
         CommandLineIncomplete,
         InvalidConfigurationFile,
+        ConfigurationFileNotFound,
         UnknownError
     }
 
@@ -35,6 +37,9 @@ namespace MGAServer
         [Option('c', "conf", Required = false, HelpText = "Configuration file path")]
         public string ConfigurationPath { get; set; }
 
+        [Option('e', "enforce", Required = false, Default = true, HelpText = "Error out when specified configuration file can not be found")]
+        public bool EnforceConfiguration { get; set; }
+
         public Mode GetMode()
         {
             switch (ModeString[0])
@@ -51,8 +56,12 @@ namespace MGAServer
 
     public class Program
     {
+        static CancellationTokenSource _Cancel;
+
         static int Main(string[] args)
         {
+            _Cancel = new CancellationTokenSource();
+            Console.CancelKeyPress += Console_CancelKeyPress;
             Options opt = null;
             Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
             {
@@ -64,6 +73,15 @@ namespace MGAServer
                 try
                 {
                     Configuration.Load(opt.ConfigurationPath);
+                }
+                catch (FileNotFoundException)
+                {
+                    Logger.WriteInfo("Can't find specified configuration file.");
+                    if (opt.EnforceConfiguration)
+                    {
+                        Logger.WriteInfo("Configuration file parameter is being enforced. Exiting.");
+                        return (int)ExitCodes.ConfigurationFileNotFound;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -84,32 +102,54 @@ namespace MGAServer
             }
         }
 
+        private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
+        {
+            _Cancel.Cancel();
+        }
+
         static ExitCodes AcquisitionMain(string portName)
         {
-            using MGAResult res = new MGAResult(Configuration.Instance.GetSavePath());
-            using MGAServer serv = new MGAServer(portName);
-
-            return ExitCodes.OK;
+            try
+            {
+                PipeServer.Initialize(Configuration.Instance.PipeName);
+                PipeServer.Instance.ErrorOccured += Logger.WriteError;
+                using MGAResult res = new MGAResult(Configuration.Instance.GetSavePath(), PipeServer.Instance);
+                using MGAServer serv = new MGAServer(portName);
+                serv.ErrorOccurred += Logger.WriteError;
+                serv.PacketParsed += (s, p) => res.Add(p);
+                try
+                {
+                    serv.Connect();
+                    serv.SendTargetHeaterResistances(Configuration.Instance.TargetHeaterResistances);
+                }
+                catch (Exception ex)
+                {
+                    Logger.WriteError(serv, ex, "Can't connect or initialize the device.");
+                }
+                _Cancel.Token.WaitHandle.WaitOne();
+                try
+                {
+                    serv.Disconnect();
+                }
+                catch (Exception ex)
+                {
+                    Logger.WriteError(serv, ex, "Can't disconnect.");
+                }
+                return ExitCodes.OK;
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteError(null, ex, "Unable to initialize acquistion API.");
+                return ExitCodes.UnknownError;
+            }
         }
 
         static ExitCodes DumpParserMain(string filePath)
         {
             var ext = Path.GetExtension(filePath);
             MGAResult res = (ext == ".txt" || ext == ".csv") ?
-                    MGAParser.ParseLADump(filePath) : MGAParser.ParseRawDump(filePath);
-            var r1 = res.GetSensor(0).Select(x => string.Format("{0} {1:F3} {2}",
-                string.Join(' ', x.RawValue.Select(x => x.ToString("X2")).ToArray())
-                , x.HeaterResistance, x.Conductance)).ToArray();
-            var r2 = res.GetSensor(1).Select(x => string.Format("{0} {1:F3} {2}",
-                string.Join(' ', x.RawValue.Select(x => x.ToString("X2")).ToArray())
-                , x.HeaterResistance, x.Conductance)).ToArray();
-            var r3 = res.GetSensor(2).Select(x => string.Format("{0} {1:F3} {2}",
-                string.Join(' ', x.RawValue.Select(x => x.ToString("X2")).ToArray())
-                , x.HeaterResistance, x.Conductance)).ToArray();
-            var r4 = res.GetSensor(3).Select(x => string.Format("{0} {1:F3} {2}",
-                string.Join(' ', x.RawValue.Select(x => x.ToString("X2")).ToArray())
-                , x.HeaterResistance, x.Conductance)).ToArray();
-            r4.GetEnumerator();
+                    MGAParser.ParseLADump(filePath, Configuration.Instance.GetSavePath()) : 
+                    MGAParser.ParseRawDump(filePath, Configuration.Instance.GetSavePath());
             return ExitCodes.OK;
         }
     }
