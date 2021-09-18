@@ -23,6 +23,7 @@ namespace MGA
         }
 
         public int[] SelectSensors { get; set; }
+        public bool KeepInRam { get; set; } = false;
 
         public MGAPacket[] GetSensor(int index)
         {
@@ -41,7 +42,7 @@ namespace MGA
             {
                 _Pipe.Send(item);
             }
-            base.Add(item);
+            if (KeepInRam) base.Add(item);
         }
 
         public void Dispose()

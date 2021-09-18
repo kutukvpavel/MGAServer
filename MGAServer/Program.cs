@@ -153,7 +153,9 @@ namespace MGA
             try
             {
                 serv.Connect();
-                serv.SendTargetHeaterResistances(Configuration.Instance.TargetHeaterResistances);
+                if (Configuration.Instance.UpdateSensorConfiguration)
+                    serv.SendTargetHeaterResistances(Configuration.Instance.GetTargetResistances());
+                serv.InhibitIncomingData = false;
             }
             catch (Exception ex)
             {

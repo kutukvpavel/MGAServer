@@ -46,6 +46,7 @@ namespace MGA
 
         public SerialPortStream Port { get; set; }
         public MGAParser Parser { get; }
+        public bool InhibitIncomingData { get; set; } = true;
 
         public void Connect()
         {
@@ -128,6 +129,7 @@ namespace MGA
 
         private void Port_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
+            if (InhibitIncomingData) return;
             int b;
             MGAPacket p;
             lock (Parser)
