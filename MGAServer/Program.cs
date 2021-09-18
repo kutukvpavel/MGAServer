@@ -14,7 +14,8 @@ namespace MGA
 
     public enum ExitCodes
     {
-        OK,
+        CancellationRequested = -1,
+        OK = 0,
         UnknownMode,
         CommandLineIncomplete,
         InvalidConfigurationFile,
@@ -148,7 +149,7 @@ namespace MGA
                     Logger.WriteError(res, ex, "Unable to add a packet into the results.");
                 }
             };
-            if (_Cancel.IsCancellationRequested) return ExitCodes.OK;
+            if (_Cancel.IsCancellationRequested) return ExitCodes.CancellationRequested;
             try
             {
                 serv.Connect();
@@ -160,7 +161,7 @@ namespace MGA
                 return ExitCodes.UnknownError;
             }
             _Cancel.Token.WaitHandle.WaitOne();
-            return ExitCodes.OK;
+            return ExitCodes.CancellationRequested;
         }
 
         static ExitCodes DumpParserMain(string filePath, string outputPath)
