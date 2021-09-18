@@ -1,7 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using NamedPipeWrapper;
+﻿using NamedPipeWrapper;
+using System;
+using System.Text.Json;
 
 namespace MGA
 {
@@ -18,7 +17,7 @@ namespace MGA
 
         public static void Initialize(string pipeName)
         {
-            if (Instance != null) throw new InvalidOperationException("The pipe has already been initialized.");
+            if (_Instance != null) throw new InvalidOperationException("The pipe has already been initialized.");
             _Instance = new PipeServer(pipeName);
         }
 
@@ -26,7 +25,7 @@ namespace MGA
 
         public void Send(MGAPacket data)
         {
-            _Pipe.PushMessage(data);
+            _Pipe.PushMessage(JsonSerializer.Serialize(data));
         }
 
         public void Dispose()
@@ -41,7 +40,7 @@ namespace MGA
 
         private PipeServer(string pipeName)
         {
-            _Pipe = new NamedPipeServer<MGAPacket>(pipeName);
+            _Pipe = new NamedPipeServer<string>(pipeName);
             _Pipe.Error += Pipe_Error;
             _Pipe.Start();
         }
@@ -51,6 +50,6 @@ namespace MGA
             ErrorOccured?.Invoke(this, exception);
         }
 
-        private readonly NamedPipeServer<MGAPacket> _Pipe;
+        private readonly NamedPipeServer<string> _Pipe;
     }
 }

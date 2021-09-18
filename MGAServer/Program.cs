@@ -1,8 +1,7 @@
-﻿using System;
+﻿using CommandLine;
+using System;
 using System.IO;
-using System.Linq;
 using System.Threading;
-using CommandLine;
 
 namespace MGA
 {
@@ -30,6 +29,9 @@ namespace MGA
 
         [Option('p', "port", Required = false, HelpText = "COM port name")]
         public string PortName { get; set; }
+
+        [Option('o', "output", Required = false, HelpText = "Output path override")]
+        public string OutputPath { get; set; }
 
         [Option('f', "file", Required = false, HelpText = "Path to the dump file to be parsed")]
         public string DumpPath { get; set; }
@@ -89,67 +91,96 @@ namespace MGA
                     return (int)ExitCodes.InvalidConfigurationFile;
                 }
             }
-            switch (opt.GetMode())
+            else
             {
-                case Mode.Acquisition:
-                    if (opt.PortName == null) return (int)ExitCodes.CommandLineIncomplete;
-                    return (int)AcquisitionMain(opt.PortName);
-                case Mode.DumpParser:
-                    if (opt.DumpPath == null) return (int)ExitCodes.CommandLineIncomplete;
-                    return (int)DumpParserMain(opt.DumpPath);
-                default:
-                    return (int)ExitCodes.UnknownMode;
+                Configuration.Load();
+            }
+            string outputPath = Configuration.Instance.GetSavePath(opt.OutputPath);
+            Console.WriteLine("Processed output path template = " + outputPath ?? "none");
+            try
+            {
+                switch (opt.GetMode())
+                {
+                    case Mode.Acquisition:
+                        if (opt.PortName == null) return (int)ExitCodes.CommandLineIncomplete;
+                        return (int)AcquisitionMain(opt.PortName, outputPath);
+                    case Mode.DumpParser:
+                        if (opt.DumpPath == null) return (int)ExitCodes.CommandLineIncomplete;
+                        return (int)DumpParserMain(opt.DumpPath, outputPath);
+                    default:
+                        return (int)ExitCodes.UnknownMode;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteError(null, ex, "Error inside XxxMain initialization code.");
+                return (int)ExitCodes.UnknownError;
             }
         }
 
         private static void Console_CancelKeyPress(object sender, ConsoleCancelEventArgs e)
         {
-            _Cancel.Cancel();
+            if (!_Cancel.IsCancellationRequested) _Cancel.Cancel();
+            e.Cancel = true;
         }
 
-        static ExitCodes AcquisitionMain(string portName)
+        static ExitCodes AcquisitionMain(string portName, string overridePath)
         {
+            PipeServer.Initialize(Configuration.Instance.PipeName);
+            PipeServer.Instance.ErrorOccured += Logger.WriteError;
+            MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
+            using MGAResult res = new MGAResult(overridePath, PipeServer.Instance)
+            {
+                SelectSensors = Configuration.Instance.SelectSensors
+            };
+            using MGAServer serv = new MGAServer(portName);
+            _Cancel.Token.Register(() => serv.Disconnect());
+            serv.ErrorOccurred += Logger.WriteError;
+            serv.PacketParsed += (s, p) =>
+            {
+                try
+                {
+                    Console.WriteLine(p.ToString());
+                    res.Add(p);
+                }
+                catch (Exception ex)
+                {
+                    Logger.WriteError(res, ex, "Unable to add a packet into the results.");
+                }
+            };
+            if (_Cancel.IsCancellationRequested) return ExitCodes.OK;
             try
             {
-                PipeServer.Initialize(Configuration.Instance.PipeName);
-                PipeServer.Instance.ErrorOccured += Logger.WriteError;
-                using MGAResult res = new MGAResult(Configuration.Instance.GetSavePath(), PipeServer.Instance);
-                using MGAServer serv = new MGAServer(portName);
-                serv.ErrorOccurred += Logger.WriteError;
-                serv.PacketParsed += (s, p) => res.Add(p);
-                try
-                {
-                    serv.Connect();
-                    serv.SendTargetHeaterResistances(Configuration.Instance.TargetHeaterResistances);
-                }
-                catch (Exception ex)
-                {
-                    Logger.WriteError(serv, ex, "Can't connect or initialize the device.");
-                }
-                _Cancel.Token.WaitHandle.WaitOne();
-                try
-                {
-                    serv.Disconnect();
-                }
-                catch (Exception ex)
-                {
-                    Logger.WriteError(serv, ex, "Can't disconnect.");
-                }
-                return ExitCodes.OK;
+                serv.Connect();
+                serv.SendTargetHeaterResistances(Configuration.Instance.TargetHeaterResistances);
             }
             catch (Exception ex)
             {
-                Logger.WriteError(null, ex, "Unable to initialize acquistion API.");
+                Logger.WriteError(serv, ex, "Can't connect or initialize the device.");
                 return ExitCodes.UnknownError;
             }
+            _Cancel.Token.WaitHandle.WaitOne();
+            return ExitCodes.OK;
         }
 
-        static ExitCodes DumpParserMain(string filePath)
+        static ExitCodes DumpParserMain(string filePath, string outputPath)
         {
             var ext = Path.GetExtension(filePath);
-            MGAResult res = (ext == ".txt" || ext == ".csv") ?
-                    MGAParser.ParseLADump(filePath, Configuration.Instance.GetSavePath()) : 
-                    MGAParser.ParseRawDump(filePath, Configuration.Instance.GetSavePath());
+            MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
+            MGAResult res = null;
+            try
+            {
+                res = (ext == ".txt" || ext == ".csv") ?
+                    MGAParser.ParseLADump(filePath, outputPath) :
+                    MGAParser.ParseRawDump(filePath, outputPath);
+                res.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteError(res, ex, "Unable to parse the dump.");
+                return ExitCodes.UnknownError;
+            }
+            Console.WriteLine("Parser task complete.");
             return ExitCodes.OK;
         }
     }

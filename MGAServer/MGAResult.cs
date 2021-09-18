@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace MGA
 {
@@ -14,7 +13,12 @@ namespace MGA
         { }
         public MGAResult(string filePath, PipeServer pipe = null) : this()
         {
-            InitFiles(filePath);
+            if (filePath != null)
+            {
+                string dir = Path.GetDirectoryName(filePath);
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); 
+                InitFiles(filePath);
+            }
             _Pipe = pipe;
         }
 
@@ -30,8 +34,8 @@ namespace MGA
             if (!(SelectSensors?.Contains(item.SensorIndex) ?? true)) return;
             if (_SaveFile[item.SensorIndex]?.BaseStream?.CanWrite ?? false)
             {
-
-                _SaveFile[item.SensorIndex].WriteLine(SaveLineFormat, DateTime.Now, item.Conductance, item.HeaterResistance);
+                _SaveFile[item.SensorIndex].WriteLine(SaveLineFormat, 
+                    item.Timestamp, item.Conductance, item.HeaterResistance);
             }
             if (_Pipe != null)
             {
@@ -62,6 +66,8 @@ namespace MGA
             }
         }
 
+        #region Private
+
         private void InitFiles(string filePath)
         {
             for (int i = 0; i < _SaveFile.Length; i++)
@@ -74,5 +80,7 @@ namespace MGA
         private bool _Disposed = false;
         private readonly StreamWriter[] _SaveFile = new StreamWriter[4];
         private readonly PipeServer _Pipe;
+
+        #endregion
     }
 }

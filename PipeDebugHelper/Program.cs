@@ -1,24 +1,27 @@
 ﻿using System;
 using NamedPipeWrapper;
+using System.Text.Json;
 
 namespace PipeDebugHelper
 {
     class Program
     {
-        static NamedPipeClient<MGAPacket> Client;
+        static NamedPipeClient<string> Client;
 
         static void Main(string[] args)
         {
             Console.WriteLine("Hello World!");
-            Client = new NamedPipeClient<MGAPacket>("MGA_Broadcast_Pipe");
+            Client = new NamedPipeClient<string>("MGA_Broadcast_Pipe");
             Client.ServerMessage += Client_ServerMessage;
+            Client.Start();
             Client.WaitForConnection();
             Client.WaitForDisconnection();
+            Client.Stop();
         }
 
-        private static void Client_ServerMessage(NamedPipeConnection<MGAPacket, MGAPacket> connection, MGAPacket message)
+        private static void Client_ServerMessage(NamedPipeConnection<string, string> connection, string message)
         {
-            Console.WriteLine(message.ToString());
+            Console.WriteLine(JsonSerializer.Deserialize<MGAPacket>(message).ToString());
         }
     }
 
@@ -29,6 +32,7 @@ namespace PipeDebugHelper
 
         }
         
+        public DateTime Timestamp { get; set; }
         public int SensorIndex { get; set; }
         public float HeaterResistance { get; set; }
         public float Conductance { get; set; }

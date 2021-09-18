@@ -1,10 +1,8 @@
-﻿using System;
+﻿using RJCP.IO.Ports;
+using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using RJCP.IO.Ports;
 
 namespace MGA
 {
@@ -32,7 +30,7 @@ namespace MGA
          * 
          */
 
-        public static int ConfigurationDataLoadDelay { get; set; } = 500;
+        public static int ConfigurationDataLoadDelay { get; set; } = 1000;
 
         public event EventHandler<MGAPacket> PacketParsed;
         public event EventHandler<Exception> ErrorOccurred;
@@ -58,7 +56,7 @@ namespace MGA
             {
                 Port.Open();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 Disconnect();
                 throw;
@@ -70,14 +68,15 @@ namespace MGA
             if (targetRes.Length != 4) throw new ArgumentOutOfRangeException();
             var fixedPoint = targetRes.Select(x => (uint)(x * 100));
             int n = 0;
+            Thread.Sleep(ConfigurationDataLoadDelay);
             foreach (var item in fixedPoint)
             {
                 ConfigurationPageSender(item, n++);
-                Port.Flush();
+                //Port.Flush();
                 Thread.Sleep(ConfigurationDataLoadDelay);
             }
-            Port.WriteByte(0x0C);
-            Port.Flush();
+            Port.WriteByte(0xC0);
+            //Port.Flush();
         }
 
         public void Disconnect()
@@ -111,14 +110,14 @@ namespace MGA
         }
 
         private bool _Disposed = false;
-        private BlockingCollection<MGAPacket> _PacketQueue;
+        private readonly BlockingCollection<MGAPacket> _PacketQueue;
         private Thread _PacketDumpThread;
         private CancellationTokenSource _DumpTokenSource;
 
         private void Port_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
         {
             if (e.EventType == SerialError.NoError) return;
-            lock (this)
+            lock (Parser)
             {
                 Port.DiscardInBuffer();
                 Port.DiscardOutBuffer();
@@ -131,7 +130,7 @@ namespace MGA
         {
             int b;
             MGAPacket p;
-            lock (this)
+            lock (Parser)
             {
                 try
                 {
@@ -150,7 +149,7 @@ namespace MGA
 
         private void PacketDumper()
         {
-            while (true)
+            while (!_DumpTokenSource.IsCancellationRequested)
             {
                 try
                 {

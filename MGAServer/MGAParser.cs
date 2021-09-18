@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text;
-using System.IO;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 
 namespace MGA
@@ -27,6 +26,7 @@ namespace MGA
         public static byte[] PacketPreamble { get; set; } = new byte[] { 0x00, 0xFF, 0xFF, 0xAA };
         public static char Delimeter { get; set; } = ',';
         public static int ValueColumnIndex { get; set; } = 1;
+        public static int TimeColumnIndex { get; set; } = 0;
         public static CultureInfo Culture { get; set; } = CultureInfo.InvariantCulture;
         public static int HeaderLines { get; set; } = 1;
         public static bool ReverseEndianess { get; set; } = true;
@@ -41,10 +41,15 @@ namespace MGA
             MGAResult res = new MGAResult(outputPath, null);
             var p = new MGAParser();
             int b;
+            DateTime t = DateTime.MinValue;
             while ((b = s.ReadByte()) != -1)
             {
-                var packet = p.ParseByte((byte)b);
-                if (packet != null) res.Add(packet);
+                var packet = p.ParseByte((byte)b, t);
+                if (packet != null)
+                {
+                    res.Add(packet);
+                    if (packet.SensorIndex == 0) t = t.AddSeconds(0.1);
+                }
             }
             return res;
         }
@@ -55,13 +60,32 @@ namespace MGA
             MGAResult res = new MGAResult(outputPath, null);
             var p = new MGAParser();
             int headerSkip = 0;
+            DateTime tnow = DateTime.MinValue;
             foreach (var line in data)
             {
                 string l = line.Replace("0x", "");
                 if (headerSkip++ < HeaderLines) continue;
-                string s = l.Split(Delimeter)[ValueColumnIndex];
-                byte val = byte.Parse(s, NumberStyles.HexNumber, Culture);
-                MGAPacket packet = p.ParseByte(val);
+                string[] s = l.Split(Delimeter);
+                byte val = byte.Parse(s[ValueColumnIndex], NumberStyles.HexNumber, Culture);
+                DateTime? t = null;
+                if (DateTime.TryParse(s[TimeColumnIndex], out DateTime dt))
+                {
+                    t = dt;
+                }
+                else if (DateTime.TryParse(s[TimeColumnIndex], 
+                    CultureInfo.InvariantCulture, DateTimeStyles.AllowWhiteSpaces, out DateTime dti))
+                {
+                    t = dti;
+                }
+                else if (double.TryParse(s[TimeColumnIndex], out double ds))
+                {
+                    t = tnow.AddSeconds(ds);
+                }
+                else if (double.TryParse(s[TimeColumnIndex], NumberStyles.Float, CultureInfo.InvariantCulture, out double dsi))
+                {
+                    t = tnow.AddSeconds(dsi);
+                }
+                MGAPacket packet = p.ParseByte(val, t);
                 if (packet != null) res.Add(packet);
             }
             return res;
@@ -85,13 +109,13 @@ namespace MGA
         float cond;
         List<byte> raw = new List<byte>(9);
 
-        public MGAPacket ParseByte(byte val)
+        public MGAPacket ParseByte(byte val, DateTime? timestamp = null)
         {
             lock (this)
             {
                 try
                 {
-                    return Engine(val);
+                    return Engine(val, timestamp ?? DateTime.Now);
                 }
                 catch (Exception)
                 {
@@ -101,7 +125,7 @@ namespace MGA
             }
         }
 
-        private MGAPacket Engine(byte val)
+        private MGAPacket Engine(byte val, DateTime timestamp)
         {
             if (s != State.SearchingForPreamble && s != State.ConfirmingPreamble)
             {
@@ -178,7 +202,7 @@ namespace MGA
                         cond = BitConverter.ToInt32(b.ToArray(), 0) / 1.6E9f;
                         s = State.SearchingForPreamble;
                         indexer = 0;
-                        return new MGAPacket(si, temp, cond, raw.ToArray());
+                        return new MGAPacket(si, temp, cond, raw.ToArray(), timestamp);
                     }
                     break;
                 default:

@@ -5,7 +5,9 @@ VisualStudioVersion = 16.0.30621.155
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MGA", "MGAServer\MGA.csproj", "{9240CA7A-DDEF-455E-AB35-128277C70D10}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PipeDebugHelper", "PipeDebugHelper\PipeDebugHelper.csproj", "{5A26FAB4-9D64-4140-BFBE-6B2B96F8559D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PipeDebugHelper", "PipeDebugHelper\PipeDebugHelper.csproj", "{5A26FAB4-9D64-4140-BFBE-6B2B96F8559D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PortDebugHelper", "PortDebugHelper\PortDebugHelper.csproj", "{CA8D7993-7912-437A-AEF8-566E73A93A9E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{5A26FAB4-9D64-4140-BFBE-6B2B96F8559D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A26FAB4-9D64-4140-BFBE-6B2B96F8559D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A26FAB4-9D64-4140-BFBE-6B2B96F8559D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CA8D7993-7912-437A-AEF8-566E73A93A9E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CA8D7993-7912-437A-AEF8-566E73A93A9E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CA8D7993-7912-437A-AEF8-566E73A93A9E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CA8D7993-7912-437A-AEF8-566E73A93A9E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

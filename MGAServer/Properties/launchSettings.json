@@ -2,7 +2,7 @@
   "profiles": {
     "MGAServer": {
       "commandName": "Project",
-      "commandLineArgs": "\"E:\\mga_cond.txt\""
+      "commandLineArgs": "-m a -p COM3 -o \"\""
     }
   }
 }
