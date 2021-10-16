@@ -9,6 +9,7 @@ namespace MGA
     {
         Acquisition,
         DumpParser,
+        ExampleDataGeneration,
         Unknown
     }
 
@@ -45,15 +46,13 @@ namespace MGA
 
         public Mode GetMode()
         {
-            switch (ModeString[0])
+            return (ModeString[0]) switch
             {
-                case 'a':
-                    return Mode.Acquisition;
-                case 'd':
-                    return Mode.DumpParser;
-                default:
-                    return Mode.Unknown;
-            }
+                'a' => Mode.Acquisition,
+                'd' => Mode.DumpParser,
+                'g' => Mode.ExampleDataGeneration,
+                _ => Mode.Unknown,
+            };
         }
     }
 
@@ -108,6 +107,8 @@ namespace MGA
                     case Mode.DumpParser:
                         if (opt.DumpPath == null) return (int)ExitCodes.CommandLineIncomplete;
                         return (int)DumpParserMain(opt.DumpPath, outputPath);
+                    case Mode.ExampleDataGeneration:
+                        return (int)ExampleMain(outputPath);
                     default:
                         return (int)ExitCodes.UnknownMode;
                 }
@@ -123,6 +124,28 @@ namespace MGA
         {
             if (!_Cancel.IsCancellationRequested) _Cancel.Cancel();
             e.Cancel = true;
+        }
+
+        static ExitCodes ExampleMain(string overridePath)
+        {
+            PipeServer.Initialize(Configuration.Instance.PipeName);
+            PipeServer.Instance.ErrorOccured += Logger.WriteError;
+            MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
+            using MGAResult res = new MGAResult(overridePath, PipeServer.Instance)
+            {
+                SelectSensors = Configuration.Instance.SelectSensors
+            };
+            Random rnd = new Random();
+            while (!_Cancel.IsCancellationRequested)
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    res.Add(new MGAPacket(i, (float)rnd.NextDouble(), (float)rnd.NextDouble(), null, DateTime.Now));
+                    Thread.Sleep(1);
+                }
+                Thread.Sleep(100);
+            }
+            return ExitCodes.CancellationRequested;
         }
 
         static ExitCodes AcquisitionMain(string portName, string overridePath)

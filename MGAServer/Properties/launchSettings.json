@@ -2,7 +2,7 @@
   "profiles": {
     "MGAServer": {
       "commandName": "Project",
-      "commandLineArgs": "-m a -p COM3 -o \"\""
+      "commandLineArgs": "-m g"
     }
   }
 }

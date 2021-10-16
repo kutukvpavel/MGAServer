@@ -7,6 +7,8 @@ namespace MGA
 {
     public class MGAResult : List<MGAPacket>, IDisposable
     {
+        public const int SensorCount = 4;
+
         public static string SaveLineFormat { get; set; }
 
         public MGAResult() : base()
@@ -33,10 +35,16 @@ namespace MGA
         public new void Add(MGAPacket item)
         {
             if (!(SelectSensors?.Contains(item.SensorIndex) ?? true)) return;
-            if (_SaveFile[item.SensorIndex]?.BaseStream?.CanWrite ?? false)
+            var sw = _SaveFile[item.SensorIndex];
+            if (sw?.BaseStream?.CanWrite ?? false)
             {
-                _SaveFile[item.SensorIndex].WriteLine(SaveLineFormat, 
+                sw.WriteLine(SaveLineFormat, 
                     item.Timestamp, item.Conductance, item.HeaterResistance);
+                if (_FlushCounter[item.SensorIndex] > 3)
+                {
+                    sw.FlushAsync();
+                    _FlushCounter[item.SensorIndex] = 0;
+                }
             }
             if (_Pipe != null)
             {
@@ -79,8 +87,9 @@ namespace MGA
         }
 
         private bool _Disposed = false;
-        private readonly StreamWriter[] _SaveFile = new StreamWriter[4];
+        private readonly StreamWriter[] _SaveFile = new StreamWriter[SensorCount];
         private readonly PipeServer _Pipe;
+        private readonly int[] _FlushCounter = new int[SensorCount];
 
         #endregion
     }
