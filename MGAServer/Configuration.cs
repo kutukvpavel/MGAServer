@@ -16,7 +16,7 @@ namespace MGA
             new MGASensor() { ExplicitTargetResistance = 17 },
             new MGASensor() { ExplicitTargetResistance = 17 }
         };
-        public string SaveTarget { get; set; } = @".\results\sensor{{0}}_{0:yyyy-MM-dd_HH-mm-ss}.csv";
+        public string SaveTarget { get; set; } = @".\results\{0:yyyy-MM-dd_HH-mm-ss}_sensor{{0}}.csv";
         public string SaveLineFormat { get; set; } = "{0:yyyy-MM-dd HH-mm-ss.ff};{1:E3};{2:F2}";
         public string PipeName { get; set; } = "MGA_Broadcast_Pipe";
         public int[] SelectSensors { get; set; } = new int[] { 0, 1, 2, 3 };
