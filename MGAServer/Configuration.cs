@@ -43,5 +43,12 @@ namespace MGA
         {
             Instance = JsonSerializer.Deserialize<Configuration>(File.ReadAllText(path));
         }
+        public static void Save(string path)
+        {
+            File.WriteAllText(
+                path,
+                JsonSerializer.Serialize(Instance, new JsonSerializerOptions() { WriteIndented = true })
+                );
+        }
     }
 }

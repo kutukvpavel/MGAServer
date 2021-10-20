@@ -128,6 +128,7 @@ namespace MGA
 
         static ExitCodes ExampleMain(string overridePath)
         {
+            Configuration.Save(Path.Combine(Environment.CurrentDirectory, "example_config.json"));
             PipeServer.Initialize(Configuration.Instance.PipeName);
             PipeServer.Instance.ErrorOccured += Logger.WriteError;
             MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
