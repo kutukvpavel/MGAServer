@@ -74,7 +74,13 @@ namespace MGA
             {
                 try
                 {
-                    Configuration.Load(opt.ConfigurationPath);
+                    string p = opt.ConfigurationPath.Trim('"');
+                    if (!Path.IsPathFullyQualified(p))
+                    {
+                        p = Path.GetFullPath(p, Environment.CurrentDirectory);
+                    }
+                    Configuration.Load(p);
+                    Console.WriteLine($"Loaded configuration from: {p}");
                 }
                 catch (FileNotFoundException)
                 {
