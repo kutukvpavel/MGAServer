@@ -135,7 +135,8 @@ namespace MGA
         static ExitCodes ExampleMain(string overridePath)
         {
             Configuration.Save(Path.Combine(Environment.CurrentDirectory, "example_config.json"));
-            PipeServer.Initialize(Configuration.Instance.PipeName);
+            PipeServer.Initialize(Configuration.Instance.PipeName, Configuration.Instance.LabPidPipeName, 
+                Configuration.Instance.TargetTemperature);
             PipeServer.Instance.ErrorOccured += Logger.WriteError;
             MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
             using MGAResult res = new MGAResult(overridePath, PipeServer.Instance)
@@ -157,7 +158,8 @@ namespace MGA
 
         static ExitCodes AcquisitionMain(string portName, string overridePath)
         {
-            PipeServer.Initialize(Configuration.Instance.PipeName);
+            PipeServer.Initialize(Configuration.Instance.PipeName, Configuration.Instance.LabPidPipeName,
+                 Configuration.Instance.TargetTemperature);
             PipeServer.Instance.ErrorOccured += Logger.WriteError;
             MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
             using MGAResult res = new MGAResult(overridePath, PipeServer.Instance)
@@ -178,6 +180,10 @@ namespace MGA
                 {
                     Logger.WriteError(res, ex, "Unable to add a packet into the results.");
                 }
+            };
+            PipeServer.Instance.SetpointChanged += (o, e) =>
+            {
+                serv.SendTargetHeaterResistances(Configuration.Instance.GetTargetResistances(e));
             };
             if (_Cancel.IsCancellationRequested) return ExitCodes.CancellationRequested;
             try

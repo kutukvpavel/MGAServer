@@ -19,13 +19,18 @@ namespace MGA
         public string SaveTarget { get; set; } = @".\results\{0:yyyy-MM-dd_HH-mm-ss}_sensor{{0}}.csv";
         public string SaveLineFormat { get; set; } = "{0:yyyy-MM-dd HH-mm-ss.ff};{1:E3};{2:F2}";
         public string PipeName { get; set; } = "MGA_Broadcast_Pipe";
+        public string LabPidPipeName { get; set; } = "LabPID_Profile_Broadcast";
         public int[] SelectSensors { get; set; } = new int[] { 0, 1, 2, 3 };
         public float TargetTemperature { get; set; } = 300;
         public bool UpdateSensorConfiguration { get; set; } = true;
 
+        public float[] GetTargetResistances(float setpoint)
+        {
+            return Sensors.Select(x => x.GetTargetResistance(setpoint)).ToArray();
+        }
         public float[] GetTargetResistances()
         {
-            return Sensors.Select(x => x.GetTargetResistance(TargetTemperature)).ToArray();
+            return GetTargetResistances(TargetTemperature);
         }
         public string GetSavePath(string overridePath = null)
         {
