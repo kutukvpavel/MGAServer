@@ -9,6 +9,7 @@ namespace MGA
 
         public static void WriteInfo(string data)
         {
+            Console.WriteLine(data);
             _Instance.Info(data);
         }
 
@@ -21,6 +22,7 @@ namespace MGA
         {
             string buf = $"Exception from object '{sender ?? "static"}': {e}";
             if (data != null) buf += $"{Environment.NewLine}Additional data: {data}";
+            Console.WriteLine(buf);
             _Instance.Error(buf);
         }
     }

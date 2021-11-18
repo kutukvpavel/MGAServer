@@ -78,6 +78,7 @@ namespace MGA
                 _Pipe.Send(item);
             }
             if (KeepInRam) base.Add(item);
+            Console.WriteLine(item.ToString());
         }
 
         public void Dispose()

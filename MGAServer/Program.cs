@@ -173,7 +173,7 @@ namespace MGA
             {
                 try
                 {
-                    Console.WriteLine(p.ToString());
+                    //Console.WriteLine(p.ToString()); Output only averaged packets
                     res.Add(p);
                 }
                 catch (Exception ex)
@@ -183,6 +183,7 @@ namespace MGA
             };
             PipeServer.Instance.SetpointChanged += (o, e) =>
             {
+                Logger.WriteInfo($"Setpoint changed to {e}");
                 serv.SendTargetHeaterResistances(Configuration.Instance.GetTargetResistances(e));
             };
             if (_Cancel.IsCancellationRequested) return ExitCodes.CancellationRequested;
