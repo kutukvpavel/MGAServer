@@ -153,7 +153,7 @@ namespace MGA
             PipeServer.Initialize(Configuration.Instance.PipeName);
             PipeServer.Instance.ErrorOccured += Logger.WriteError;
             MGAResult.SaveLineFormat = Configuration.Instance.SaveLineFormat;
-            using MGAResult res = new MGAResult(overridePath, PipeServer.Instance)
+            using MGAResult res = new MGAResult(overridePath, Configuration.Instance.Averaging, PipeServer.Instance)
             {
                 SelectSensors = Configuration.Instance.SelectSensors
             };

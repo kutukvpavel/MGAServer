@@ -27,5 +27,22 @@ namespace MGA
         {
             return $"{SensorIndex}: {Conductance:E3}, {HeaterResistance:F2}";
         }
+
+        public MGAPacket Sum(MGAPacket second)
+        {
+            return new MGAPacket(SensorIndex, HeaterResistance + second.HeaterResistance,
+                Conductance + second.Conductance, second.RawValue, second.Timestamp);
+        }
+
+        public MGAPacket Subtract(MGAPacket second)
+        {
+            return new MGAPacket(SensorIndex, HeaterResistance - second.HeaterResistance,
+                Conductance - second.Conductance, RawValue, Timestamp);
+        }
+
+        public MGAPacket Divide(uint div)
+        {
+            return new MGAPacket(SensorIndex, HeaterResistance / div, Conductance / div, RawValue, Timestamp);
+        }
     }
 }

@@ -22,6 +22,7 @@ namespace MGA
         public int[] SelectSensors { get; set; } = new int[] { 0, 1, 2, 3 };
         public float TargetTemperature { get; set; } = 300;
         public bool UpdateSensorConfiguration { get; set; } = true;
+        public uint Averaging { get; set; } = 1;
 
         public float[] GetTargetResistances()
         {
