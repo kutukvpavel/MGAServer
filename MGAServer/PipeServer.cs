@@ -15,13 +15,14 @@ namespace MGA
             }
         }
 
-        public static void Initialize(string pipeName)
+        public static void Initialize(string pipeName, string labPidPipeName, float initialSetpoint)
         {
             if (_Instance != null) throw new InvalidOperationException("The pipe has already been initialized.");
-            _Instance = new PipeServer(pipeName);
+            _Instance = new PipeServer(pipeName, labPidPipeName, initialSetpoint);
         }
 
         public event EventHandler<Exception> ErrorOccured;
+        public event EventHandler<float> SetpointChanged;
 
         public void Send(MGAPacket data)
         {
@@ -38,11 +39,35 @@ namespace MGA
             { }
         }
 
-        private PipeServer(string pipeName)
+        private PipeServer(string pipeName, string labPidPipeName, float initialSetpoint)
         {
+            _LastSetpoint = initialSetpoint;
             _Pipe = new NamedPipeServer<string>(pipeName);
             _Pipe.Error += Pipe_Error;
+            _LabPidPipe = new NamedPipeClient<string>(labPidPipeName);
+            _LabPidPipe.Error += Pipe_Error;
+            _LabPidPipe.ServerMessage += LabPidPipe_ServerMessage;
             _Pipe.Start();
+        }
+
+        private void LabPidPipe_ServerMessage(NamedPipeConnection<string, string> connection, string message)
+        {
+            try
+            {
+                if (message[0] == 'S')
+                {
+                    float setpoint = float.Parse(message[1..]);
+                    if (setpoint != _LastSetpoint)
+                    {
+                        SetpointChanged.Invoke(this, setpoint);
+                        _LastSetpoint = setpoint;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorOccured.Invoke(this, ex);
+            }
         }
 
         private void Pipe_Error(Exception exception)
@@ -50,6 +75,8 @@ namespace MGA
             ErrorOccured?.Invoke(this, exception);
         }
 
+        private float _LastSetpoint;
         private readonly NamedPipeServer<string> _Pipe;
+        private readonly NamedPipeClient<string> _LabPidPipe;
     }
 }
