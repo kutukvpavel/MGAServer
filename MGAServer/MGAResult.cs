@@ -33,9 +33,9 @@ namespace MGA
                     _AveragingRemoveQueue[i] = new Queue<MGAPacket>((int)averaging);
                     for (int j = 0; j < averaging; j++)
                     {
-                        _AveragingRemoveQueue[i].Enqueue(new MGAPacket());
+                        _AveragingRemoveQueue[i].Enqueue(new MGAPacket(i));
                     }
-                    _AveragingContainer[i] = new MGAPacket();
+                    _AveragingContainer[i] = new MGAPacket(i);
                 }
             }
         }
@@ -60,7 +60,7 @@ namespace MGA
                 q.Enqueue(item);
                 _AveragingContainer[item.SensorIndex] = cont;
                 item = cont.Divide(Averaging);
-                if (_AveragingIndex++ % Averaging != 0) return;
+                if (_AveragingIndex[item.SensorIndex]++ % Averaging != 0) return;
             }
             var sw = _SaveFile[item.SensorIndex];
             if (sw?.BaseStream?.CanWrite ?? false)
@@ -120,7 +120,7 @@ namespace MGA
         private readonly int[] _FlushCounter = new int[SensorCount];
         private readonly MGAPacket[] _AveragingContainer = new MGAPacket[SensorCount];
         private readonly Queue<MGAPacket>[] _AveragingRemoveQueue = new Queue<MGAPacket>[SensorCount];
-        private uint _AveragingIndex = 0;
+        private uint[] _AveragingIndex = new uint[SensorCount];
 
         #endregion
     }

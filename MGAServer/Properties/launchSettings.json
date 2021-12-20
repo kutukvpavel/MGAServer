@@ -2,7 +2,7 @@
   "profiles": {
     "MGAServer": {
       "commandName": "Project",
-      "commandLineArgs": "-m g"
+      "commandLineArgs": "-m a -p COM7 -c \".\\mga_config.json\" -e"
     }
   }
 }

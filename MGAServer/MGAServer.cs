@@ -138,7 +138,11 @@ namespace MGA
                 {
                     while((b = Port.ReadByte()) != -1)
                     {
-                        p = Parser.ParseByte((byte)b);
+                        var bb = (byte)b;
+#if DEBUG
+                        Console.WriteLine(bb.ToString("X2"));
+#endif
+                        p = Parser.ParseByte(bb);
                         if (p != null) _PacketQueue.Add(p);
                     }
                 }

@@ -48,6 +48,7 @@ namespace MGA
             _LabPidPipe.Error += Pipe_Error;
             _LabPidPipe.ServerMessage += LabPidPipe_ServerMessage;
             _Pipe.Start();
+            _LabPidPipe.Start();
         }
 
         private void LabPidPipe_ServerMessage(NamedPipeConnection<string, string> connection, string message)

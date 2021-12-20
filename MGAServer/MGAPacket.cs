@@ -4,9 +4,9 @@ namespace MGA
 {
     public class MGAPacket
     {
-        public MGAPacket()
+        public MGAPacket(int index = -1)
         {
-
+            SensorIndex = index;
         }
         public MGAPacket(int index, float resistance, float conductance, byte[] raw, DateTime timestamp) : this()
         {
