@@ -9,8 +9,17 @@ namespace MGA
 
         public static void WriteInfo(string data)
         {
-            Console.WriteLine(data);
-            _Instance.Info(data);
+            try
+            {
+                Console.WriteLine(data);
+                _Instance.Info(data);
+            }
+            catch (Exception)
+            {
+#if DEBUG
+                throw;
+#endif
+            }
         }
 
         public static void WriteError(object sender, Exception e)

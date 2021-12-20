@@ -139,7 +139,7 @@ namespace MGA
                     while((b = Port.ReadByte()) != -1)
                     {
                         var bb = (byte)b;
-#if DEBUG
+#if DEBUG_VERBOSE
                         Console.WriteLine(bb.ToString("X2"));
 #endif
                         p = Parser.ParseByte(bb);

@@ -34,6 +34,7 @@ namespace MGA
             try
             {
                 _Pipe.Stop();
+                if (_LabPidPipe != null) _LabPidPipe.Stop();
             }
             catch (ObjectDisposedException)
             { }
@@ -44,11 +45,14 @@ namespace MGA
             _LastSetpoint = initialSetpoint;
             _Pipe = new NamedPipeServer<string>(pipeName);
             _Pipe.Error += Pipe_Error;
-            _LabPidPipe = new NamedPipeClient<string>(labPidPipeName);
-            _LabPidPipe.Error += Pipe_Error;
-            _LabPidPipe.ServerMessage += LabPidPipe_ServerMessage;
+            if ((labPidPipeName?.Length ?? 0) > 0)
+            {
+                _LabPidPipe = new NamedPipeClient<string>(labPidPipeName);
+                _LabPidPipe.Error += Pipe_Error;
+                _LabPidPipe.ServerMessage += LabPidPipe_ServerMessage;
+                _LabPidPipe.Start();
+            }
             _Pipe.Start();
-            _LabPidPipe.Start();
         }
 
         private void LabPidPipe_ServerMessage(NamedPipeConnection<string, string> connection, string message)
