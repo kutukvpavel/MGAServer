@@ -55,14 +55,11 @@ namespace MGA
         {
             try
             {
-                if (message[0] == 'S')
+                var p = JsonSerializer.Deserialize<LabPid.Packet>(message);
+                if (p.Setpoint != _LastSetpoint)
                 {
-                    float setpoint = float.Parse(message[1..]);
-                    if (setpoint != _LastSetpoint)
-                    {
-                        SetpointChanged.Invoke(this, setpoint);
-                        _LastSetpoint = setpoint;
-                    }
+                    SetpointChanged.Invoke(this, p.Setpoint);
+                    _LastSetpoint = p.Setpoint;
                 }
             }
             catch (Exception ex)
